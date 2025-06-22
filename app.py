@@ -264,7 +264,7 @@ if run_button and idea:
             # --- Generate product image ---
             st.markdown("### 🖼️ AGI Product Image (auto-generated):")
             dalle_prompt = f"{idea} as a product, in a majestic, cyberpunk, futuristic style, ultra-detailed, concept art"
-            img_url = generate_image_dalle3(dalle_prompt, OPENAI_API_KEY)
+            img_url = generate_image_dalle3(dalle_prompt)
             if img_url:
                 st.image(img_url, use_column_width=True, caption="AGI-generated product visual")
             else:
