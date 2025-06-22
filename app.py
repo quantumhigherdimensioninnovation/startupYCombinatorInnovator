@@ -2,117 +2,100 @@ import streamlit as st
 import random
 import base64
 import openai
-from backend.gemini_agent import gemini_extract_features
-from backend.claude_agent import summarize_market, create_launch_plan
-from backend.groq_agent import query_groq
-from backend.compliance_agent import compliance_check
-from backend.fetchai_agent import fetchai_market_insights
-
 import os
+from backend.fetchai_agent import startupmesh_pipeline
 
 # ---- OpenAI DALL·E 3 setup ----
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")  # set in .env or your dashboard
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 openai.api_key = OPENAI_API_KEY
 
 st.set_page_config(page_title="StartupMesh: AGI x Y Combinator", page_icon="🚀", layout="wide")
 
-# --- Random AI-City Image for background only ---
+# --- Cyberpunk City Hero Image Setup ---
 city_images = [
-    "ai-generated-8229795_1280.jpg",
     "DALL·E 2025-06-22 06.10.47 - A futuristic skyline inspired by New York, Shanghai, and Dubai, featuring thousands of skyscrapers with flowing curves and opalescent windows. These t.webp",
-    "ai-generated-futuristic-city-at-night-futuristic-city-3d-rendering-ai-generated-free-photo.jpg"
 ]
 skyline_image = random.choice(city_images)
 with open(skyline_image, "rb") as img_file:
     b64_img = base64.b64encode(img_file.read()).decode()
 
-# --- Majestic Animated CSS ---
+# --- Cyberpunk Animated CSS ---
 st.markdown("""
 <style>
 .stApp {
     background: linear-gradient(120deg, #13132a 0%, #1f1045 100%) !important;
-    animation: neonbg 10s ease-in-out infinite alternate;
     min-height: 100vh;
     font-family: 'Orbitron', 'Roboto', sans-serif;
 }
-@keyframes neonbg {
-    0% { background: linear-gradient(120deg, #13132a 0%, #1f1045 100%);}
-    40% { background: linear-gradient(120deg, #18124b 0%, #27326e 100%);}
-    65% { background: linear-gradient(120deg, #2a195c 0%, #0035a5 100%);}
-    100% { background: linear-gradient(120deg, #101a3e 0%, #371e6f 100%);}
+.impact-badge {
+    font-size: 1.25rem !important;
+    font-weight: 900 !important;
+    color: #fc03be !important;
+    text-shadow: 0 0 14px #00f9ff, 0 0 10px #fc03be, 0 0 6px #fff;
+    background: linear-gradient(90deg,#0ff4,#fc03be8a);
+    border-radius: 18px;
+    padding: 0.35em 1.3em;
+    box-shadow: 0 0 18px #fc03be99, 0 0 32px #00f9ff99;
+    letter-spacing: 1.7px;
+    border: 2.1px solid #00f9ff99;
+    display: inline-block;
 }
+
 .hero-img-container {
     position: relative;
+    width: 100%;
     text-align: center;
     margin-bottom: -1.3rem;
 }
-.hero-img-title {
+.hero-img-city {
+    width: 99vw;
+    max-width: 1200px;
+    border-radius: 24px;
+    box-shadow: 0 0 56px #00f9ffcc;
+}
+.hero-img-title-block {
     position: absolute;
-    top: 7.5%;
-    left: 0;
-    width: 100%;
+    top: 12%;
+    left: 50%;
+    transform: translate(-50%, 0);
+    background: rgba(16,20,44,0.81);
+    padding: 2.2rem 3.6rem 1.1rem 3.6rem;
+    border-radius: 26px;
     color: #fff;
-    font-size: 2.35rem;
-    text-shadow: 0 0 24px #00f9ff, 0 0 9px #fc03be;
-    font-weight: 800;
+    font-size: 2.45rem;
+    font-weight: 900;
+    text-shadow: 0 0 28px #00f9ff, 0 0 18px #fc03be;
     letter-spacing: 1.3px;
-    background: rgba(0,0,0,0.26);
-    padding: 10px 0 6px 0;
-    border-radius: 18px;
+    border: 2.8px solid #00f9ff77;
+    box-shadow: 0 0 50px #fc03be55, 0 0 100px #00f9ff33;
     z-index: 2;
+    animation: glowmove 3.6s infinite alternate;
 }
-.neon-card {
-    background: rgba(22,25,52,0.97);
-    border-radius: 22px;
+@keyframes glowmove {
+    0% { box-shadow: 0 0 40px #00f9ff77, 0 0 10px #fc03be33;}
+    100% { box-shadow: 0 0 90px #fc03becc, 0 0 110px #00f9ffcc;}
+}
+.think-step {
+    margin: 1.8rem 0 2.2rem 0;
+    background: linear-gradient(94deg, #0ff7 0%, #1b0f4fdd 100%);
     border: 2.5px solid #00f9ff77;
-    box-shadow:
-        0 0 12px 2px #00f9ff,
-        0 0 30px 4px #fc03be55,
-        0 0 2px #fff8;
-    padding: 1.3rem 1.7rem 1.3rem 1.7rem;
-    margin: 1.1rem 0 1.3rem 0;
-    transition: box-shadow 0.4s;
-    font-family: 'Share Tech Mono', 'Menlo', monospace;
+    border-radius: 22px;
+    box-shadow: 0 0 24px #00f9ffcc, 0 0 66px #fc03be55;
+    font-size: 1.85rem;
+    padding: 1.4rem 1.7rem 1.3rem 1.7rem;
+    position: relative;
+    animation: popfade 0.8s;
 }
-.glow-label {
+@keyframes popfade {
+    from {opacity: 0; transform: translateY(32px);}
+    to   {opacity: 1; transform: translateY(0);}
+}
+.think-step-label {
+    font-size: 1.32rem;
     color: #fc03be;
-    font-weight: 700;
-    font-size: 1.13rem;
-    letter-spacing: 1.2px;
-    margin-bottom: 0.2rem;
-    text-shadow: 0 0 8px #fc03be, 0 0 8px #00f9ff;
-}
-.impact-badge {
-    display: inline-block;
-    background: linear-gradient(90deg, #0ff 10%, #fc03be 90%);
-    color: #1c1b29;
-    border-radius: 14px;
-    padding: 0.23em 0.95em;
-    margin-left: 10px;
-    font-weight: 700;
-    letter-spacing: 1.4px;
-    font-size: 1.03rem;
-    box-shadow: 0 0 10px #fc03be55, 0 0 16px #00f9ff44;
-    text-shadow: 0 0 6px #fff, 0 0 2px #00f9ff;
-    animation: impactpulse 2.4s infinite alternate;
-}
-@keyframes impactpulse {
-    0% { box-shadow: 0 0 10px #fc03be99, 0 0 16px #00f9ff55; }
-    100% { box-shadow: 0 0 16px #fc03becc, 0 0 36px #00f9ffcc; }
-}
-.hero-glow {
-    text-align:center;
-    background: linear-gradient(92deg, #0ff5 0%, #fc03be33 90%);
-    border-radius:28px;
-    margin-bottom:2rem;
-    box-shadow: 0 0 88px #00f9ff22;
-    padding: 2rem 2rem 1.2rem 2rem;
-    border: 2px solid #fc03be77;
-    animation: glowshadow 2.7s infinite alternate;
-}
-@keyframes glowshadow {
-    0% { box-shadow: 0 0 28px #0ff, 0 0 18px #fc03be44; }
-    100% { box-shadow: 0 0 40px #fc03beaa, 0 0 44px #0ff9; }
+    font-weight: 800;
+    text-shadow: 0 0 14px #00f9ff, 0 0 4px #fc03be;
+    margin-bottom: 0.31rem;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -120,9 +103,13 @@ st.markdown("""
 # --- Hero Section with Overlayed Image & Title ---
 st.markdown(f"""
 <div class="hero-img-container">
-    <img src="data:image/jpg;base64,{b64_img}" style="width:99vw;max-width:1200px;border-radius:24px;box-shadow:0 0 56px #00f9ffcc;" />
-    <div class="hero-img-title">
-      🚀 StartupMesh: <span style='color:#fc03be;'>AGI</span> x <span style='color:#00f9ff'>Y Combinator</span>
+    <img src="data:image/jpg;base64,{b64_img}" class="hero-img-city"/>
+    <div class="hero-img-title-block">
+        🚀 <span style="color:#fc03be;">StartupMesh</span>: <span style="color:#00f9ff">AGI x Y Combinator</span>
+        <div style="font-size:1.16rem;font-weight:600;color:#bbfffc;margin-top:14px;">
+            Next-Gen AGI Product Studio: Instantly Generate Market Analysis, Launch Plans, Creative Assets, and Cyberpunk Product Visuals.<br>
+            <span style="color:#f8d442;">Your AI-powered startup pipeline. Just add your idea.</span>
+        </div>
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -135,38 +122,13 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# --- Social Impact Toggle ---
-impact_mode = st.toggle(
-    "🌎 AGI for Humanity: Social Impact Mode",
-    value=False,
-    help="Turn ON to reframe every step for maximum positive social impact."
-)
-
-def apply_impact_mode_prompt(prompt: str) -> str:
-    impact_modifier = (
-        "\n\n[INSTRUCTION FOR AGENT: Reframe ALL outputs to maximize positive social impact, "
-        "inclusion, and benefit for the most disadvantaged or the environment. "
-        "Prioritize ideas that reduce inequality, empower communities, or solve real-world problems at scale. "
-        "DO NOT suggest profit over impact unless both are aligned.]"
-    )
-    return prompt + impact_modifier
-
-def neon_card(text, label=None, color="#00f9ff"):
-    label_html = f"<div class='glow-label' style='color:{color}'>{label}</div>" if label else ""
-    return st.markdown(f"""
-    <div class="neon-card" style="border-color:{color}88;box-shadow:0 0 22px {color}77, 0 0 52px #fff2;">
-        {label_html}
-        <div style="font-size:1.13rem; color:#f8d442; text-shadow:0 0 5px #222, 0 0 11px {color};word-break:break-word;">
-            {text}
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-# --- User Inputs ---
+# --- User Input Card ---
 st.markdown("""
-<div style='background:rgba(20,20,40,0.93);padding:1.0rem 1.2rem 0.5rem 1.2rem;border-radius:16px;box-shadow:0 0 18px #00f9ff99,0 0 22px #fc03be88;border:2px solid #00f9ff88;margin-bottom:1.3rem;'>
-    <span style='font-size:1.04rem;color:#00f9ff;letter-spacing:1.1px;text-shadow:0 0 10px #0ff;'>
-        Enter your startup idea and let the AGI generate your entire dossier—including a product image!
+<div style='background:rgba(20,20,40,0.95);padding:1.2rem 1.4rem 1.2rem 1.4rem;border-radius:18px;
+            box-shadow:0 0 24px #00f9ff88,0 0 32px #fc03be77;border:2.5px solid #00f9ff88;margin-bottom:1.6rem;'>
+    <span style='font-size:1.12rem;color:#00f9ff;letter-spacing:1.1px;font-weight:700;
+                 text-shadow:0 0 10px #0ff,0 0 4px #fff;'>
+        Enter your startup idea and watch the AGI agents build your full dossier—plus an AI-generated product visual.
     </span>
 </div>
 """, unsafe_allow_html=True)
@@ -188,122 +150,63 @@ def generate_image_dalle3(prompt):
         st.warning(f"Image generation error: {e}")
         return None
 
+def think_step_box(label, content, color="#00f9ff"):
+    st.markdown(f"""
+    <div class="think-step" style="border-color:{color};box-shadow:0 0 26px {color}99,0 0 44px #fc03be55;">
+      <div class="think-step-label">{label}</div>
+      <div style="font-size:1.13rem;color:#f8d442;text-shadow:0 0 8px #222,0 0 10px {color};word-break:break-word;">
+        {content}
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
+
 if run_button and idea:
     st.markdown("---")
-    st.header("🤖 StartupMesh Orchestration: Classic vs Social Impact")
-    tab1, tab2 = st.tabs(["🚀 Classic Startup", "🌎 Social Impact Mode"])
-    for tab, is_impact in zip([tab1, tab2], [False, True]):
-        with tab:
-            st.subheader("🧠 Thinking Steps")
-            # --- Step 1: Gemini ---
-            with st.status("Step 1: Gemini Feature Extraction...", expanded=True):
-                system_prompt = (
-                    "Extract ALL of the following from the input (pitch text) as a structured JSON object. "
-                    "The JSON should contain keys for 'features', 'competitors', 'strengths', 'weaknesses', "
-                    "'market_opportunities_gaps'. Each value should be a list of strings."
-                )
-                if is_impact:
-                    system_prompt = apply_impact_mode_prompt(system_prompt)
-                try:
-                    gemini_out = gemini_extract_features(idea, input_type="text")
-                    st.success("Gemini features extracted.")
-                except Exception as e:
-                    st.error(f"Gemini error: {str(e)}")
-                    gemini_out = "Gemini extraction failed."
-            # --- Step 2: Fetch AI (NEW!) ---
-            with st.status("Step 2: Fetch AI Market Insights...", expanded=True):
-                try:
-                    fetchai_out = fetchai_market_insights(idea)
-                    st.success("Fetch AI market insights complete.")
-                except Exception as e:
-                    st.error(f"Fetch AI error: {str(e)}")
-                    fetchai_out = "Fetch AI step failed."
-            # --- Step 3: Claude Market Analysis ---
-            with st.status("Step 3: Claude Market Analysis...", expanded=True):
-                claude_prompt = (
-                    f"Analyze the market for: {idea}\n"
-                    f"FetchAI market insights: {fetchai_out}\n"
-                    f"Gemini pitch analysis: {gemini_out}\n"
-                    "Summarize the market gap in 2-3 sentences."
-                )
-                if is_impact:
-                    claude_prompt = apply_impact_mode_prompt(claude_prompt)
-                try:
-                    claude_market = summarize_market(idea, "", claude_prompt)
-                    st.success("Claude market summary complete.")
-                except Exception as e:
-                    st.error(f"Claude error: {str(e)}")
-                    claude_market = "Claude market analysis failed."
-            # --- Step 4: Claude Launch Plan ---
-            with st.status("Step 4: Claude Launch Plan...", expanded=True):
-                plan_prompt = (
-                    f"Given this idea: {idea}\n"
-                    f"And this market gap: {claude_market}\n"
-                    "Generate a 5-step actionable launch plan, with one risk and one differentiator."
-                )
-                if is_impact:
-                    plan_prompt = apply_impact_mode_prompt(plan_prompt)
-                try:
-                    claude_plan = create_launch_plan(idea, plan_prompt)
-                    st.success("Claude launch plan ready.")
-                except Exception as e:
-                    st.error(f"Claude error: {str(e)}")
-                    claude_plan = "Claude launch plan failed."
-            # --- Step 5: Groq Creative Copy ---
-            with st.status("Step 5: Groq Creative Copy...", expanded=True):
-                groq_prompt = (
-                    f"Startup Idea: {idea}\n"
-                    f"Market Summary: {claude_market}\n"
-                    f"Pitch Analysis: {gemini_out}\n"
-                    f"FetchAI Insights: {fetchai_out}\n"
-                    "Generate a creative tagline, a unique differentiator, and a launch tweet for this startup."
-                )
-                if is_impact:
-                    groq_prompt = apply_impact_mode_prompt(groq_prompt)
-                try:
-                    groq_copy = query_groq(groq_prompt)
-                    st.success("Groq creative copy ready.")
-                except Exception as e:
-                    st.error(f"Groq error: {str(e)}")
-                    groq_copy = "Groq creative step failed."
-            # --- Step 6: Compliance Agent ---
-            with st.status("Step 6: Compliance Agent (optional)...", expanded=True):
-                compliance_input = contract_text or ""
-                if is_impact and compliance_input:
-                    compliance_input = apply_impact_mode_prompt(compliance_input)
-                try:
-                    compliance_report = compliance_check(compliance_input) if compliance_input else "No contract/ToS provided."
-                    st.success("Compliance check complete.")
-                except Exception as e:
-                    st.error(f"Compliance error: {str(e)}")
-                    compliance_report = "Compliance check failed."
-            # --- Neon Cards For All Results ---
-            neon_card(fetchai_out, label="Fetch AI Market Insights", color="#0ff")
-            neon_card(claude_market, label="Market Summary", color="#fc03be")
-            neon_card(claude_plan, label="Launch Plan", color="#f8d442")
-            neon_card(groq_copy, label="Creative Assets", color="#00f9ff")
-            neon_card(compliance_report, label="Compliance Report", color="#fcfcfc")
-            neon_card(gemini_out, label="Gemini Raw Output", color="#bbff00")
-            st.download_button(
-                f"Download Startup Dossier ({'Impact' if is_impact else 'Classic'})",
-                data=(
-                    f"FetchAI: {fetchai_out}\n"
-                    f"Market: {claude_market}\n"
-                    f"Plan: {claude_plan}\n"
-                    f"Creative: {groq_copy}\n"
-                    f"Compliance: {compliance_report}"
-                ),
-                file_name=f"startup_dossier_{'impact' if is_impact else 'classic'}.txt"
+    st.header("🤖 StartupMesh: Agentic Thinking Steps")
+    # --- SINGLE FUNCTION CALL: everything in one shot! ---
+    with st.spinner("Running full agent pipeline..."):
+        try:
+            result = startupmesh_pipeline(
+                idea=idea,
+                input_type="text",
+                input_data=idea,
+                mime_type=None,
+                contract_text=contract_text if contract_text else None
             )
-            # --- Product Image LAST (always at the bottom) ---
-            st.markdown("### 🖼️ AGI Product Image (auto-generated):")
-            dalle_prompt = f"{idea} as a product, in a majestic, cyberpunk, futuristic style, ultra-detailed, concept art"
-            img_url = generate_image_dalle3(dalle_prompt)
-            if img_url:
-                st.image(img_url, use_column_width=True, caption="AGI-generated product visual")
-            else:
-                st.warning("Product image could not be generated.")
+        except Exception as e:
+            st.error(f"Agent error: {e}")
+            result = None
+
+    if result:
+        think_step_box(
+            "Step 0: Fetch.ai Agent Mesh Orchestration",
+            "Your startup dossier is assembled by a decentralized Fetch.ai agent mesh, routing your idea through Gemini, Claude, Groq, and Compliance agents in real time for maximal accuracy and creativity.",
+            color="#0ff"
+        )
+        think_step_box("Step 1: Market Summary (Claude + Gemini)", result.get("market_summary", {}).get("content", ""), color="#fc03be")
+        think_step_box("Step 2: Action Plan (Claude)", result.get("action_plan", {}).get("content", ""), color="#f8d442")
+        think_step_box("Step 3: Creative Assets (Groq)", result.get("creative_assets", {}).get("content", ""), color="#00f9ff")
+        think_step_box("Step 4: Compliance Report", result.get("compliance_report", {}).get("content", ""), color="#fcfcfc")
+        think_step_box("Step 5: Gemini Raw Output", result.get("raw_gemini_output", ""), color="#bbff00")
+        st.download_button(
+            "Download Startup Dossier",
+            data=(
+                f"Market: {result.get('market_summary',{}).get('content','')}\n"
+                f"Plan: {result.get('action_plan',{}).get('content','')}\n"
+                f"Creative: {result.get('creative_assets',{}).get('content','')}\n"
+                f"Compliance: {result.get('compliance_report',{}).get('content','')}"
+            ),
+            file_name="startup_dossier.txt"
+        )
+        # --- Product Image LAST (always at the bottom) ---
+        st.markdown("### 🖼️ <span style='color:#fc03be'>AGI Product Image</span> (auto-generated):", unsafe_allow_html=True)
+        dalle_prompt = f"{idea} as a product, in a majestic, cyberpunk, futuristic style, ultra-detailed, concept art"
+        img_url = generate_image_dalle3(dalle_prompt)
+        if img_url:
+            st.image(img_url, use_column_width=True, caption="AGI-generated product visual")
+        else:
+            st.warning("Product image could not be generated.")
+    else:
+        st.warning("Could not generate dossier. Please try again.")
 else:
     st.info("Enter your idea, then hit 'Run StartupMesh AGI 🚀' to build your dossier.")
-
-
