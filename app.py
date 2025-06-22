@@ -6,6 +6,8 @@ from backend.gemini_agent import gemini_extract_features
 from backend.claude_agent import summarize_market, create_launch_plan
 from backend.groq_agent import query_groq
 from backend.compliance_agent import compliance_check
+from backend.fetchai_agent import fetchai_market_insights
+
 import os
 
 # ---- OpenAI DALL·E 3 setup ----
@@ -193,6 +195,7 @@ if run_button and idea:
     for tab, is_impact in zip([tab1, tab2], [False, True]):
         with tab:
             st.subheader("🧠 Thinking Steps")
+            # --- Step 1: Gemini ---
             with st.status("Step 1: Gemini Feature Extraction...", expanded=True):
                 system_prompt = (
                     "Extract ALL of the following from the input (pitch text) as a structured JSON object. "
@@ -207,21 +210,32 @@ if run_button and idea:
                 except Exception as e:
                     st.error(f"Gemini error: {str(e)}")
                     gemini_out = "Gemini extraction failed."
-            with st.status("Step 2: Claude Market Analysis...", expanded=True):
+            # --- Step 2: Fetch AI (NEW!) ---
+            with st.status("Step 2: Fetch AI Market Insights...", expanded=True):
+                try:
+                    fetchai_out = fetchai_market_insights(idea)
+                    st.success("Fetch AI market insights complete.")
+                except Exception as e:
+                    st.error(f"Fetch AI error: {str(e)}")
+                    fetchai_out = "Fetch AI step failed."
+            # --- Step 3: Claude Market Analysis ---
+            with st.status("Step 3: Claude Market Analysis...", expanded=True):
                 claude_prompt = (
                     f"Analyze the market for: {idea}\n"
+                    f"FetchAI market insights: {fetchai_out}\n"
                     f"Gemini pitch analysis: {gemini_out}\n"
                     "Summarize the market gap in 2-3 sentences."
                 )
                 if is_impact:
                     claude_prompt = apply_impact_mode_prompt(claude_prompt)
                 try:
-                    claude_market = summarize_market(idea, "", gemini_out if not is_impact else claude_prompt)
+                    claude_market = summarize_market(idea, "", claude_prompt)
                     st.success("Claude market summary complete.")
                 except Exception as e:
                     st.error(f"Claude error: {str(e)}")
                     claude_market = "Claude market analysis failed."
-            with st.status("Step 3: Claude Launch Plan...", expanded=True):
+            # --- Step 4: Claude Launch Plan ---
+            with st.status("Step 4: Claude Launch Plan...", expanded=True):
                 plan_prompt = (
                     f"Given this idea: {idea}\n"
                     f"And this market gap: {claude_market}\n"
@@ -230,16 +244,18 @@ if run_button and idea:
                 if is_impact:
                     plan_prompt = apply_impact_mode_prompt(plan_prompt)
                 try:
-                    claude_plan = create_launch_plan(idea, claude_market if not is_impact else plan_prompt)
+                    claude_plan = create_launch_plan(idea, plan_prompt)
                     st.success("Claude launch plan ready.")
                 except Exception as e:
                     st.error(f"Claude error: {str(e)}")
                     claude_plan = "Claude launch plan failed."
-            with st.status("Step 4: Groq Creative Copy...", expanded=True):
+            # --- Step 5: Groq Creative Copy ---
+            with st.status("Step 5: Groq Creative Copy...", expanded=True):
                 groq_prompt = (
                     f"Startup Idea: {idea}\n"
                     f"Market Summary: {claude_market}\n"
                     f"Pitch Analysis: {gemini_out}\n"
+                    f"FetchAI Insights: {fetchai_out}\n"
                     "Generate a creative tagline, a unique differentiator, and a launch tweet for this startup."
                 )
                 if is_impact:
@@ -250,7 +266,8 @@ if run_button and idea:
                 except Exception as e:
                     st.error(f"Groq error: {str(e)}")
                     groq_copy = "Groq creative step failed."
-            with st.status("Step 5: Compliance Agent (optional)...", expanded=True):
+            # --- Step 6: Compliance Agent ---
+            with st.status("Step 6: Compliance Agent (optional)...", expanded=True):
                 compliance_input = contract_text or ""
                 if is_impact and compliance_input:
                     compliance_input = apply_impact_mode_prompt(compliance_input)
@@ -260,16 +277,8 @@ if run_button and idea:
                 except Exception as e:
                     st.error(f"Compliance error: {str(e)}")
                     compliance_report = "Compliance check failed."
-
-            # --- Generate product image ---
-            st.markdown("### 🖼️ AGI Product Image (auto-generated):")
-            dalle_prompt = f"{idea} as a product, in a majestic, cyberpunk, futuristic style, ultra-detailed, concept art"
-            img_url = generate_image_dalle3(dalle_prompt)
-            if img_url:
-                st.image(img_url, use_column_width=True, caption="AGI-generated product visual")
-            else:
-                st.warning("Product image could not be generated.")
-
+            # --- Neon Cards For All Results ---
+            neon_card(fetchai_out, label="Fetch AI Market Insights", color="#0ff")
             neon_card(claude_market, label="Market Summary", color="#fc03be")
             neon_card(claude_plan, label="Launch Plan", color="#f8d442")
             neon_card(groq_copy, label="Creative Assets", color="#00f9ff")
@@ -277,9 +286,24 @@ if run_button and idea:
             neon_card(gemini_out, label="Gemini Raw Output", color="#bbff00")
             st.download_button(
                 f"Download Startup Dossier ({'Impact' if is_impact else 'Classic'})",
-                data=f"Market: {claude_market}\nPlan: {claude_plan}\nCreative: {groq_copy}\nCompliance: {compliance_report}",
+                data=(
+                    f"FetchAI: {fetchai_out}\n"
+                    f"Market: {claude_market}\n"
+                    f"Plan: {claude_plan}\n"
+                    f"Creative: {groq_copy}\n"
+                    f"Compliance: {compliance_report}"
+                ),
                 file_name=f"startup_dossier_{'impact' if is_impact else 'classic'}.txt"
             )
+            # --- Product Image LAST (always at the bottom) ---
+            st.markdown("### 🖼️ AGI Product Image (auto-generated):")
+            dalle_prompt = f"{idea} as a product, in a majestic, cyberpunk, futuristic style, ultra-detailed, concept art"
+            img_url = generate_image_dalle3(dalle_prompt)
+            if img_url:
+                st.image(img_url, use_column_width=True, caption="AGI-generated product visual")
+            else:
+                st.warning("Product image could not be generated.")
 else:
     st.info("Enter your idea, then hit 'Run StartupMesh AGI 🚀' to build your dossier.")
+
 
